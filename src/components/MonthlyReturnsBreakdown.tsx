@@ -139,7 +139,7 @@ export default function MonthlyReturnsBreakdown({
   return (
     <section className="space-y-6">
       {/* Chart Card */}
-      <div className="glass-card rounded-2xl p-5 border border-white/5 relative flex flex-col space-y-4">
+      <div className="glass-card rounded-2xl p-5 relative flex flex-col space-y-4">
         <div>
           <h4 className="font-sora text-sm font-bold text-on-surface uppercase tracking-tight">
             MONTHLY RETURNS BREAKDOWN
@@ -163,7 +163,7 @@ export default function MonthlyReturnsBreakdown({
                     y1={y}
                     x2={width - paddingRight}
                     y2={y}
-                    stroke="rgba(255, 255, 255, 0.07)"
+                    stroke="var(--outline-variant)"
                     strokeWidth="1"
                   />
                   <text
@@ -308,7 +308,7 @@ export default function MonthlyReturnsBreakdown({
       </div>
 
       {/* Table Section */}
-      <div className="glass-card rounded-2xl border border-white/5 overflow-hidden">
+      <div className="glass-card rounded-2xl overflow-hidden">
         <div className="p-4 border-b border-outline-variant/10">
           <h4 className="font-sora text-xs font-bold text-on-surface uppercase tracking-wider">
             Ledger & Yield Breakdown

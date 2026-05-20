@@ -191,7 +191,7 @@ export default function CapitalFlowChart({ slots }: CapitalFlowChartProps) {
   });
 
   return (
-    <div className="glass-card rounded-2xl p-5 border border-white/5 relative flex flex-col space-y-4">
+    <div className="glass-card rounded-2xl p-5 relative flex flex-col space-y-4">
       {/* Title */}
       <div>
         <h4 className="font-sora text-sm font-bold text-on-surface uppercase tracking-tight">
@@ -251,7 +251,7 @@ export default function CapitalFlowChart({ slots }: CapitalFlowChartProps) {
                   y1={y}
                   x2={width - paddingRight}
                   y2={y}
-                  stroke="rgba(255, 255, 255, 0.07)"
+                  stroke="var(--outline-variant)"
                   strokeWidth="1"
                 />
                 <text
@@ -315,7 +315,7 @@ export default function CapitalFlowChart({ slots }: CapitalFlowChartProps) {
                 y1={paddingTop}
                 x2={activePoint.x}
                 y2={height - paddingBottom}
-                stroke="rgba(255, 255, 255, 0.35)"
+                stroke="var(--outline-variant)"
                 strokeDasharray="4 4"
                 strokeWidth="1.5"
               />
