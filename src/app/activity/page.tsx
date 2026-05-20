@@ -1,35 +1,21 @@
+import { redirect } from "next/navigation";
+import { getSession } from "@/lib/session";
 import dbConnect from "@/lib/db";
 import Slot from "@/models/Slot";
 import Payment from "@/models/Payment";
-import Dashboard from "../components/Dashboard";
-import { getSession } from "@/lib/session";
-import { redirect } from "next/navigation";
+import ActivityDashboard from "@/components/ActivityDashboard";
 
 export const revalidate = 0;
 
-export default async function Page() {
+export default async function ActivityPage() {
   const session = await getSession();
   if (!session) {
     redirect("/login");
   }
 
   await dbConnect();
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  // Synchronize status with dates
-  await Slot.updateMany(
-    { status: "ACTIVE", returnDate: { $lt: today } },
-    { $set: { status: "OVERDUE" } }
-  );
-
-  await Slot.updateMany(
-    { status: "OVERDUE", returnDate: { $gte: today } },
-    { $set: { status: "ACTIVE" } }
-  );
-
-  const rawSlots = await Slot.find({}).sort({ returnDate: 1 }).lean();
-  const rawPayments = await Payment.find({}).lean();
+  const rawSlots = await Slot.find().lean();
+  const rawPayments = await Payment.find().lean();
 
   const slots = rawSlots.map((s: any) => ({
     id: s._id.toString(),
@@ -52,5 +38,5 @@ export default async function Page() {
     note: p.note || "",
   }));
 
-  return <Dashboard slots={slots} payments={payments} />;
+  return <ActivityDashboard slots={slots} payments={payments} />;
 }
