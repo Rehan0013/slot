@@ -44,29 +44,42 @@ export default function MonthlyReturnsBreakdown({
 
   const breakdown = useMemo((): MonthlyBreakdown[] => {
     const start = new Date(investmentDate);
-    const end = new Date(returnDate);
+    const returnEnd = new Date(returnDate);
 
-    let monthCount = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
-    // Minimum 1 month
-    if (monthCount < 1) monthCount = 1;
+    // Cap at current month — never show future months
+    const today = new Date();
+    const end = returnEnd < today ? returnEnd : today;
+
+    // Total months from investment to return date (for profit distribution)
+    const totalMonthCount =
+      (returnEnd.getFullYear() - start.getFullYear()) * 12 +
+      (returnEnd.getMonth() - start.getMonth());
+    const fullMonths = Math.max(1, totalMonthCount);
+
+    // Visible months: investment date → current month
+    let visibleMonthCount =
+      (end.getFullYear() - start.getFullYear()) * 12 +
+      (end.getMonth() - start.getMonth());
+    // Always show at least 1 month (the investment month itself)
+    if (visibleMonthCount < 1) visibleMonthCount = 1;
 
     const totalProfit = returnAmount - amount;
     const rng = createSeededRng(slotId);
 
-    // Generate weights
+    // Generate weights across the FULL duration so the distribution is stable
     const weights: number[] = [];
     let sumWeights = 0;
-    for (let i = 0; i < monthCount; i++) {
-      const w = 0.3 + rng() * 0.7; // random weight between 0.3 and 1.0
+    for (let i = 0; i < fullMonths; i++) {
+      const w = 0.3 + rng() * 0.7;
       weights.push(w);
       sumWeights += w;
     }
 
-    // Distribute profits
+    // Distribute profits across full duration
     const profits: number[] = [];
     let distributedProfit = 0;
-    for (let i = 0; i < monthCount; i++) {
-      if (i === monthCount - 1) {
+    for (let i = 0; i < fullMonths; i++) {
+      if (i === fullMonths - 1) {
         profits.push(totalProfit - distributedProfit);
       } else {
         const p = Math.round(totalProfit * (weights[i] / sumWeights));
@@ -75,15 +88,15 @@ export default function MonthlyReturnsBreakdown({
       }
     }
 
-    // Construct breakdown objects
+    // Construct breakdown objects — only up to visibleMonthCount
     const data: MonthlyBreakdown[] = [];
     let currentBalance = amount;
     let currentDate = new Date(start);
 
-    for (let i = 0; i < monthCount; i++) {
+    for (let i = 0; i < visibleMonthCount; i++) {
       const monthLabel = currentDate.toLocaleDateString("en-US", { month: "short", year: "2-digit" });
       const opening = currentBalance;
-      const interest = profits[i];
+      const interest = profits[i] ?? 0;
       const closing = opening + interest;
       const yieldPercent = opening > 0 ? (interest / opening) * 100 : 0;
 

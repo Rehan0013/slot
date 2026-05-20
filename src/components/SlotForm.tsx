@@ -47,15 +47,7 @@ export default function SlotForm({ initialData, onSubmitAction, isEditing = fals
   const [isPending, setIsPending] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (type === "FIX" && amount) {
-      const numAmount = parseFloat(amount);
-      if (!isNaN(numAmount) && numAmount > 0) {
-        const suggested = Math.round(numAmount * 1.3);
-        setReturnAmount(suggested.toString());
-      }
-    }
-  }, [type, amount]);
+
 
   const validateField = (name: string, value: string) => {
     let err = "";
@@ -309,7 +301,7 @@ export default function SlotForm({ initialData, onSubmitAction, isEditing = fals
 
             <div className="space-y-2">
               <label className="font-label-uppercase text-[11px] uppercase tracking-wider font-bold text-on-surface-variant block ml-1">
-                Expected Return (₹) {type === "FIX" && <span className="text-primary text-[10px] font-bold ml-1">(+30% Suggested)</span>}
+                Expected Return (₹)
               </label>
               <div className={`relative flex items-center bg-black/25 rounded-xl border ${errors.returnAmount ? 'border-error/50' : 'border-white/5'} transition-all input-focus-effect`}>
                 <span className="pl-4 text-secondary font-bold text-base">₹</span>
