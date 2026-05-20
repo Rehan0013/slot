@@ -4,7 +4,7 @@ import { decrypt } from "./lib/session";
 export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
-  // Define public paths
+  // Define public paths (no session required)
   const isPublicPath = path === "/login";
 
   // Get session cookie
@@ -14,11 +14,12 @@ export async function middleware(request: NextRequest) {
     session = await decrypt(sessionCookie);
   }
 
-  // Redirect logic
+  // Redirect logged-in users away from login page → welcome
   if (isPublicPath && session) {
-    return NextResponse.redirect(new URL("/", request.nextUrl));
+    return NextResponse.redirect(new URL("/welcome", request.nextUrl));
   }
 
+  // Redirect unauthenticated users away from protected pages → login
   if (!isPublicPath && !session) {
     return NextResponse.redirect(new URL("/login", request.nextUrl));
   }

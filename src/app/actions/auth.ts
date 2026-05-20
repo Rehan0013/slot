@@ -33,6 +33,7 @@ export async function loginUser(prevState: any, formData: FormData) {
     const sessionToken = await encrypt({
       userId: user._id.toString(),
       username: user.username,
+      name: user.name || user.username,
     });
 
     const cookieStore = await cookies();
@@ -49,7 +50,7 @@ export async function loginUser(prevState: any, formData: FormData) {
     return { error: "An unexpected error occurred. Please try again." };
   }
 
-  redirect("/");
+  redirect("/welcome");
 }
 
 export async function logoutUser() {

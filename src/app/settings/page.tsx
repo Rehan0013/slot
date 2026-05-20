@@ -28,11 +28,15 @@ export default async function SettingsPage() {
         <div className="glass-card rounded-2xl p-5 space-y-4">
           <div className="flex items-center gap-3 pb-4 border-b border-outline-variant/15">
             <div className="w-12 h-12 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary text-xl font-bold font-sora">
-              A
+              {((session?.name || session?.username) as string)?.[0]?.toUpperCase() ?? "U"}
             </div>
             <div>
-              <p className="font-sora text-sm font-semibold text-on-surface">Admin User</p>
-              <p className="text-[10px] text-on-surface-variant font-medium uppercase">System Administrator</p>
+              <p className="font-sora text-sm font-semibold text-on-surface uppercase">
+                {(session?.name || session?.username) as string}
+              </p>
+              <p className="text-[10px] text-on-surface-variant font-medium">
+                System Administrator
+              </p>
             </div>
           </div>
 
