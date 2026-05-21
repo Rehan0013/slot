@@ -31,18 +31,25 @@ export default async function Page() {
   const rawSlots = await Slot.find({}).sort({ returnDate: 1 }).lean();
   const rawPayments = await Payment.find({}).lean();
 
-  const slots = rawSlots.map((s: any) => ({
-    id: s._id.toString(),
-    type: s.type,
-    quantity: s.quantity ?? 1,
-    investorName: s.investorName,
-    mobileNo: s.mobileNo,
-    investmentDate: s.investmentDate.toISOString(),
-    returnDate: s.returnDate.toISOString(),
-    amount: s.amount,
-    returnAmount: s.returnAmount,
-    status: s.status,
-  }));
+  const slots = rawSlots.map((s: any) => {
+    const slotId = s._id.toString();
+    const tdsPaid = rawPayments
+      .filter((p: any) => p.slotId.toString() === slotId && p.type === "TDS")
+      .reduce((sum: number, p: any) => sum + p.amount, 0);
+
+    return {
+      id: slotId,
+      type: s.type,
+      quantity: s.quantity ?? 1,
+      investorName: s.investorName,
+      mobileNo: s.mobileNo,
+      investmentDate: s.investmentDate.toISOString(),
+      returnDate: s.returnDate.toISOString(),
+      amount: s.amount,
+      returnAmount: s.returnAmount - tdsPaid,
+      status: s.status,
+    };
+  });
 
   const payments = rawPayments.map((p: any) => ({
     id: p._id.toString(),

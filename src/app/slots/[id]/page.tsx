@@ -41,6 +41,10 @@ export default async function Page({ params }: PageProps) {
 
   const rawPayments = await Payment.find({ slotId: id }).sort({ paidAt: -1 }).lean();
 
+  const tdsPaidAmount = rawPayments
+    .filter((p: any) => p.type === "TDS")
+    .reduce((sum: number, p: any) => sum + p.amount, 0);
+
   const formattedSlot = {
     id: slot._id.toString(),
     type: slot.type as "FIX" | "NON_FIX",
@@ -50,7 +54,7 @@ export default async function Page({ params }: PageProps) {
     investmentDate: slot.investmentDate.toISOString(),
     returnDate: slot.returnDate.toISOString(),
     amount: slot.amount,
-    returnAmount: slot.returnAmount,
+    returnAmount: slot.returnAmount - tdsPaidAmount,
     status: slot.status as "ACTIVE" | "COMPLETED" | "OVERDUE",
   };
 

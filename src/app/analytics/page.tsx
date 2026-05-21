@@ -21,29 +21,43 @@ export default async function AnalyticsPage() {
   const payments = await Payment.find().lean();
 
   // For capital flow chart
-  const serializedSlots = slots.map((s: any) => ({
-    id: s._id.toString(),
-    investmentDate: s.investmentDate.toISOString(),
-    returnDate: s.returnDate.toISOString(),
-    amount: s.amount,
-    returnAmount: s.returnAmount,
-  }));
+  const serializedSlots = slots.map((s: any) => {
+    const slotId = s._id.toString();
+    const tdsPaidAmount = payments
+      .filter((p: any) => p.slotId.toString() === slotId && p.type === "TDS")
+      .reduce((sum: number, p: any) => sum + p.amount, 0);
+
+    return {
+      id: slotId,
+      investmentDate: s.investmentDate.toISOString(),
+      returnDate: s.returnDate.toISOString(),
+      amount: s.amount,
+      returnAmount: s.returnAmount - tdsPaidAmount,
+    };
+  });
 
   // For monthly overview (full data)
-  const overviewSlots = slots.map((s: any) => ({
-    id: s._id.toString(),
-    type: s.type as "FIX" | "NON_FIX",
-    quantity: s.quantity ?? 1,
-    investorName: s.investorName,
-    investmentDate: s.investmentDate.toISOString(),
-    returnDate: s.returnDate.toISOString(),
-    amount: s.amount,
-    returnAmount: s.returnAmount,
-    status: s.status as "ACTIVE" | "COMPLETED" | "OVERDUE",
-  }));
+  const overviewSlots = slots.map((s: any) => {
+    const slotId = s._id.toString();
+    const tdsPaidAmount = payments
+      .filter((p: any) => p.slotId.toString() === slotId && p.type === "TDS")
+      .reduce((sum: number, p: any) => sum + p.amount, 0);
 
-  const totalInvested = slots.reduce((sum, s) => sum + s.amount, 0);
-  const totalReturn = slots.reduce((sum, s) => sum + s.returnAmount, 0);
+    return {
+      id: slotId,
+      type: s.type as "FIX" | "NON_FIX",
+      quantity: s.quantity ?? 1,
+      investorName: s.investorName,
+      investmentDate: s.investmentDate.toISOString(),
+      returnDate: s.returnDate.toISOString(),
+      amount: s.amount,
+      returnAmount: s.returnAmount - tdsPaidAmount,
+      status: s.status as "ACTIVE" | "COMPLETED" | "OVERDUE",
+    };
+  });
+
+  const totalInvested = overviewSlots.reduce((sum, s) => sum + s.amount, 0);
+  const totalReturn = overviewSlots.reduce((sum, s) => sum + s.returnAmount, 0);
   const totalProfit = totalReturn - totalInvested;
 
   const fixCount = slots.filter((s) => s.type === "FIX").length;
