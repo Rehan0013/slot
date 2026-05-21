@@ -44,6 +44,7 @@ export default async function Page({ params }: PageProps) {
   const formattedSlot = {
     id: slot._id.toString(),
     type: slot.type as "FIX" | "NON_FIX",
+    quantity: slot.quantity ?? 1,
     investorName: slot.investorName,
     mobileNo: slot.mobileNo,
     investmentDate: slot.investmentDate.toISOString(),

@@ -2,6 +2,7 @@ import mongoose, { Schema } from "mongoose";
 
 export interface ISlot extends mongoose.Document {
   type: "FIX" | "NON_FIX";
+  quantity: number;
   investorName: string;
   mobileNo: string;
   investmentDate: Date;
@@ -15,6 +16,7 @@ export interface ISlot extends mongoose.Document {
 
 const SlotSchema = new Schema<ISlot>({
   type: { type: String, enum: ["FIX", "NON_FIX"], required: true },
+  quantity: { type: Number, required: true, min: 1, default: 1 },
   investorName: { type: String, required: true },
   mobileNo: { type: String, required: true },
   investmentDate: { type: Date, required: true },

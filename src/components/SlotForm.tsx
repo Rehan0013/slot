@@ -8,6 +8,7 @@ interface SlotFormProps {
   initialData?: {
     id: string;
     type: "FIX" | "NON_FIX";
+    quantity: number;
     investorName: string;
     mobileNo: string;
     investmentDate: string;
@@ -24,6 +25,7 @@ export default function SlotForm({ initialData, onSubmitAction, isEditing = fals
   const router = useRouter();
 
   const [type, setType] = useState<"FIX" | "NON_FIX">(initialData?.type || "FIX");
+  const [quantity, setQuantity] = useState<string>(initialData?.quantity?.toString() || "1");
   const [investorName, setInvestorName] = useState(initialData?.investorName || "");
   const [mobileNo, setMobileNo] = useState(initialData?.mobileNo || "");
   
@@ -39,9 +41,22 @@ export default function SlotForm({ initialData, onSubmitAction, isEditing = fals
     formatDateForInput(initialData?.returnDate) || ""
   );
   
-  const [amount, setAmount] = useState<string>(initialData?.amount?.toString() || "");
-  const [returnAmount, setReturnAmount] = useState<string>(initialData?.returnAmount?.toString() || "");
+  // Per-slot amounts (the user enters per-slot; totals auto-calculated)
+  const qty = parseInt(quantity) || 1;
+  const initialPerSlotAmount = initialData?.amount
+    ? (initialData.amount / (initialData?.quantity ?? 1)).toString()
+    : "";
+  const initialPerSlotReturn = initialData?.returnAmount
+    ? (initialData.returnAmount / (initialData?.quantity ?? 1)).toString()
+    : "";
+
+  const [perSlotAmount, setPerSlotAmount] = useState<string>(initialPerSlotAmount);
+  const [perSlotReturn, setPerSlotReturn] = useState<string>(initialPerSlotReturn);
   const [status, setStatus] = useState<"ACTIVE" | "COMPLETED" | "OVERDUE">(initialData?.status || "ACTIVE");
+
+  // Derived totals
+  const totalAmount = perSlotAmount && qty ? (parseFloat(perSlotAmount) * qty).toString() : "";
+  const totalReturn = perSlotReturn && qty ? (parseFloat(perSlotReturn) * qty).toString() : "";
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [isPending, setIsPending] = useState(false);
@@ -69,17 +84,24 @@ export default function SlotForm({ initialData, onSubmitAction, isEditing = fals
       } else if (investmentDate && new Date(value) <= new Date(investmentDate)) {
         err = "Return date must be after investment date.";
       }
-    } else if (name === "amount") {
+    } else if (name === "quantity") {
+      const num = parseInt(value);
+      if (!value) {
+        err = "Quantity is required.";
+      } else if (isNaN(num) || num < 1) {
+        err = "Quantity must be at least 1.";
+      }
+    } else if (name === "perSlotAmount") {
       const num = parseFloat(value);
       if (!value) {
-        err = "Investment amount is required.";
+        err = "Investment amount per slot is required.";
       } else if (isNaN(num) || num <= 0) {
         err = "Investment amount must be greater than 0.";
       }
-    } else if (name === "returnAmount") {
+    } else if (name === "perSlotReturn") {
       const num = parseFloat(value);
       if (!value) {
-        err = "Expected return amount is required.";
+        err = "Expected return per slot is required.";
       } else if (isNaN(num) || num <= 0) {
         err = "Return amount must be greater than 0.";
       }
@@ -99,10 +121,11 @@ export default function SlotForm({ initialData, onSubmitAction, isEditing = fals
     const isMobileValid = validateField("mobileNo", mobileNo);
     const isInvDateValid = validateField("investmentDate", investmentDate);
     const isRetDateValid = validateField("returnDate", returnDate);
-    const isAmountValid = validateField("amount", amount);
-    const isReturnValid = validateField("returnAmount", returnAmount);
+    const isQtyValid = validateField("quantity", quantity);
+    const isAmountValid = validateField("perSlotAmount", perSlotAmount);
+    const isReturnValid = validateField("perSlotReturn", perSlotReturn);
 
-    if (!isNameValid || !isMobileValid || !isInvDateValid || !isRetDateValid || !isAmountValid || !isReturnValid) {
+    if (!isNameValid || !isMobileValid || !isInvDateValid || !isRetDateValid || !isQtyValid || !isAmountValid || !isReturnValid) {
       return;
     }
 
@@ -115,8 +138,10 @@ export default function SlotForm({ initialData, onSubmitAction, isEditing = fals
     formData.append("mobile_no", mobileNo);
     formData.append("investment_date", investmentDate);
     formData.append("return_date", returnDate);
-    formData.append("amount", amount);
-    formData.append("return_amount", returnAmount);
+    formData.append("quantity", quantity);
+    // Store total amounts (per-slot × quantity)
+    formData.append("amount", totalAmount);
+    formData.append("return_amount", totalReturn);
     formData.append("status", status);
 
     try {
@@ -131,8 +156,9 @@ export default function SlotForm({ initialData, onSubmitAction, isEditing = fals
     }
   };
 
-  const profit = amount && returnAmount ? parseFloat(returnAmount) - parseFloat(amount) : 0;
-  const roi = amount && profit ? (profit / parseFloat(amount)) * 100 : 0;
+  const profit = perSlotAmount && perSlotReturn ? parseFloat(perSlotReturn) - parseFloat(perSlotAmount) : 0;
+  const roi = perSlotAmount && profit ? (profit / parseFloat(perSlotAmount)) * 100 : 0;
+  const totalProfit = profit * qty;
 
   return (
     <div className="bg-background text-on-surface font-dm-sans min-h-screen pb-32">
@@ -277,47 +303,84 @@ export default function SlotForm({ initialData, onSubmitAction, isEditing = fals
               </div>
             </div>
 
+            {/* Quantity */}
             <div className="space-y-2">
               <label className="font-label-uppercase text-[11px] uppercase tracking-wider font-bold text-on-surface-variant block ml-1">
-                Investment Amount (₹)
+                Number of Slots
               </label>
-              <div className={`relative flex items-center bg-black/25 rounded-xl border ${errors.amount ? 'border-error/50' : 'border-white/5'} transition-all input-focus-effect`}>
-                <span className="pl-4 text-primary font-bold text-base">₹</span>
+              <div className={`relative flex items-center bg-black/25 rounded-xl border ${errors.quantity ? 'border-error/50' : 'border-white/5'} transition-all input-focus-effect`}>
+                <span className="material-symbols-outlined pl-3 text-on-surface-variant text-[20px]">layers</span>
                 <input
-                  name="amount"
+                  name="quantity"
                   type="number"
-                  placeholder="0"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
+                  placeholder="1"
+                  min={1}
+                  step={1}
+                  value={quantity}
+                  onChange={(e) => setQuantity(e.target.value)}
                   onBlur={handleBlur}
                   className="w-full bg-transparent border-none focus:ring-0 text-on-surface py-3 px-3 min-h-[48px] font-bold text-base focus:outline-none"
                   required
                 />
               </div>
-              {errors.amount && (
-                <p className="text-xs text-error font-medium ml-1">{errors.amount}</p>
+              {errors.quantity && (
+                <p className="text-xs text-error font-medium ml-1">{errors.quantity}</p>
               )}
             </div>
 
+            {/* Per-Slot Investment Amount */}
             <div className="space-y-2">
               <label className="font-label-uppercase text-[11px] uppercase tracking-wider font-bold text-on-surface-variant block ml-1">
-                Expected Return (₹)
+                Investment per Slot (₹)
               </label>
-              <div className={`relative flex items-center bg-black/25 rounded-xl border ${errors.returnAmount ? 'border-error/50' : 'border-white/5'} transition-all input-focus-effect`}>
-                <span className="pl-4 text-secondary font-bold text-base">₹</span>
+              <div className={`relative flex items-center bg-black/25 rounded-xl border ${errors.perSlotAmount ? 'border-error/50' : 'border-white/5'} transition-all input-focus-effect`}>
+                <span className="pl-4 text-primary font-bold text-base">₹</span>
                 <input
-                  name="returnAmount"
+                  name="perSlotAmount"
                   type="number"
                   placeholder="0"
-                  value={returnAmount}
-                  onChange={(e) => setReturnAmount(e.target.value)}
+                  value={perSlotAmount}
+                  onChange={(e) => setPerSlotAmount(e.target.value)}
                   onBlur={handleBlur}
                   className="w-full bg-transparent border-none focus:ring-0 text-on-surface py-3 px-3 min-h-[48px] font-bold text-base focus:outline-none"
                   required
                 />
               </div>
-              {errors.returnAmount && (
-                <p className="text-xs text-error font-medium ml-1">{errors.returnAmount}</p>
+              {errors.perSlotAmount && (
+                <p className="text-xs text-error font-medium ml-1">{errors.perSlotAmount}</p>
+              )}
+              {perSlotAmount && qty > 1 && (
+                <p className="text-[11px] text-on-surface-variant ml-1">
+                  Total: <span className="text-primary font-bold">{formatCurrency(parseFloat(perSlotAmount) * qty)}</span> ({qty} slots)
+                </p>
+              )}
+            </div>
+
+            {/* Per-Slot Expected Return */}
+            <div className="space-y-2">
+              <label className="font-label-uppercase text-[11px] uppercase tracking-wider font-bold text-on-surface-variant block ml-1">
+                Expected Return per Slot (₹)
+              </label>
+              <div className={`relative flex items-center bg-black/25 rounded-xl border ${errors.perSlotReturn ? 'border-error/50' : 'border-white/5'} transition-all input-focus-effect`}>
+                <span className="pl-4 text-secondary font-bold text-base">₹</span>
+                <input
+                  name="perSlotReturn"
+                  type="number"
+                  placeholder="0"
+                  value={perSlotReturn}
+                  onChange={(e) => setPerSlotReturn(e.target.value)}
+                  onBlur={handleBlur}
+                  className="w-full bg-transparent border-none focus:ring-0 text-on-surface py-3 px-3 min-h-[48px] font-bold text-base focus:outline-none"
+                  required
+                />
+              </div>
+              {errors.perSlotReturn && (
+                <p className="text-xs text-error font-medium ml-1">{errors.perSlotReturn}</p>
+              )}
+              {perSlotReturn && qty > 1 && (
+                <p className="text-[11px] text-on-surface-variant ml-1">
+                  Total: <span className="text-secondary font-bold">{formatCurrency(parseFloat(perSlotReturn) * qty)}</span> ({qty} slots)
+                </p>
               )}
             </div>
 
@@ -348,16 +411,34 @@ export default function SlotForm({ initialData, onSubmitAction, isEditing = fals
               <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
               <div className="relative z-10 space-y-2">
                 <h3 className="font-headline-sm text-xs font-semibold text-on-surface">
-                  Technical Return Summary
+                  Return Summary
                 </h3>
                 <div className="flex justify-between items-center text-xs">
-                  <span className="text-on-surface-variant">Net Profit margin:</span>
+                  <span className="text-on-surface-variant">Profit per Slot:</span>
                   <span className="text-primary font-bold">{formatCurrency(profit)}</span>
                 </div>
+                {qty > 1 && (
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-on-surface-variant">Total Profit ({qty} slots):</span>
+                    <span className="text-primary font-bold">{formatCurrency(totalProfit)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-on-surface-variant">Projected ROI:</span>
                   <span className="text-secondary font-bold">{roi.toFixed(1)}%</span>
                 </div>
+                {qty > 1 && (
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-on-surface-variant">TDS (total):</span>
+                    <span className="text-on-surface font-bold">{formatCurrency((type === 'FIX' ? 170 : 270) * qty)}</span>
+                  </div>
+                )}
+                {qty > 1 && (
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-on-surface-variant">Booking Fee (total):</span>
+                    <span className="text-on-surface font-bold">{formatCurrency((type === 'FIX' ? 370 : 500) * qty)}</span>
+                  </div>
+                )}
                 <div className="pt-2 flex items-center gap-2">
                   <div className="h-1 flex-1 bg-surface-container-highest rounded-full overflow-hidden">
                     <div

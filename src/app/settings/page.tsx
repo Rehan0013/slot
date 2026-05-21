@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
+import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
 import SettingsClient from "@/components/SettingsClient";
 
@@ -42,6 +43,25 @@ export default async function SettingsPage() {
 
           <SettingsClient />
         </div>
+
+        {/* Terms & Conditions Card */}
+        <Link
+          href="/terms"
+          className="glass-card rounded-2xl p-5 flex items-center justify-between group hover:border-primary/30 transition-all duration-200 active:scale-[0.98] block"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+              <span className="material-symbols-outlined text-primary text-[20px]">gavel</span>
+            </div>
+            <div>
+              <p className="font-sora text-sm font-semibold text-on-surface">Terms &amp; Conditions</p>
+              <p className="text-[10px] text-on-surface-variant mt-0.5">Prospectus of Trade · Fix &amp; Non-Fix</p>
+            </div>
+          </div>
+          <span className="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">
+            chevron_right
+          </span>
+        </Link>
       </main>
 
       <BottomNav />

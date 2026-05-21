@@ -11,6 +11,7 @@ import MonthlyReturnsBreakdown from "./MonthlyReturnsBreakdown";
 interface SlotData {
   id: string;
   type: "FIX" | "NON_FIX";
+  quantity: number;
   investorName: string;
   mobileNo: string;
   investmentDate: string;
@@ -52,9 +53,12 @@ export default function SlotDetails({ slot, payments }: SlotDetailsProps) {
   const tdsPayments = payments.filter((p) => p.type === "TDS");
   const bookingPayments = payments.filter((p) => p.type === "BOOKING");
 
-  // Expected business logic amounts
-  const expectedTds = slot.type === "FIX" ? 170 : 270;
-  const expectedBooking = slot.type === "FIX" ? 370 : 500;
+  // Expected business logic amounts (per slot × quantity)
+  const perSlotTds = slot.type === "FIX" ? 170 : 270;
+  const perSlotBooking = slot.type === "FIX" ? 370 : 500;
+  const quantity = slot.quantity ?? 1;
+  const expectedTds = perSlotTds * quantity;
+  const expectedBooking = perSlotBooking * quantity;
 
   const isTdsPaid = tdsPayments.length > 0;
   const isBookingPaid = bookingPayments.length > 0;
@@ -197,6 +201,10 @@ export default function SlotDetails({ slot, payments }: SlotDetailsProps) {
                 <span className="material-symbols-outlined text-[16px]">call</span>
                 {slot.mobileNo}
               </a>
+              <p className="text-on-surface-variant text-xs flex items-center gap-1.5 mt-0.5">
+                <span className="material-symbols-outlined text-[16px]">confirmation_number</span>
+                {quantity} Slot{quantity > 1 ? "s" : ""} Booked
+              </p>
             </div>
             <div className="flex flex-col gap-2 items-end">
               <span
@@ -350,7 +358,9 @@ export default function SlotDetails({ slot, payments }: SlotDetailsProps) {
                   <div>
                     <h4 className="font-sora text-sm font-bold text-on-surface">TDS Payment</h4>
                     <p className="text-[10px] text-on-surface-variant uppercase tracking-wider mt-0.5">
-                      Expected Amount: {formatCurrency(expectedTds)}
+                      {quantity > 1
+                        ? `${formatCurrency(perSlotTds)} × ${quantity} = ${formatCurrency(expectedTds)}`
+                        : `Expected: ${formatCurrency(expectedTds)}`}
                     </p>
                   </div>
                 </div>
@@ -416,7 +426,9 @@ export default function SlotDetails({ slot, payments }: SlotDetailsProps) {
                   <div>
                     <h4 className="font-sora text-sm font-bold text-on-surface">Booking Fee</h4>
                     <p className="text-[10px] text-on-surface-variant uppercase tracking-wider mt-0.5">
-                      Expected Amount: {formatCurrency(expectedBooking)}
+                      {quantity > 1
+                        ? `${formatCurrency(perSlotBooking)} × ${quantity} = ${formatCurrency(expectedBooking)}`
+                        : `Expected: ${formatCurrency(expectedBooking)}`}
                     </p>
                   </div>
                 </div>

@@ -20,6 +20,7 @@ export async function createSlot(formData: FormData) {
   const returnDateStr = formData.get("return_date") as string;
   const amountStr = formData.get("amount") as string;
   const returnAmountStr = formData.get("return_amount") as string;
+  const quantityStr = formData.get("quantity") as string;
 
   if (!type || !investorName || !mobileNo || !investmentDateStr || !returnDateStr || !amountStr || !returnAmountStr) {
     return { error: "All fields are required." };
@@ -43,6 +44,7 @@ export async function createSlot(formData: FormData) {
 
   const amount = parseFloat(amountStr);
   const returnAmount = parseFloat(returnAmountStr);
+  const quantity = quantityStr ? parseInt(quantityStr, 10) : 1;
 
   if (isNaN(amount) || amount <= 0) {
     return { error: "Investment amount must be greater than 0." };
@@ -50,6 +52,10 @@ export async function createSlot(formData: FormData) {
 
   if (isNaN(returnAmount) || returnAmount <= 0) {
     return { error: "Return amount must be greater than 0." };
+  }
+
+  if (isNaN(quantity) || quantity < 1) {
+    return { error: "Quantity must be at least 1." };
   }
 
   let status: "ACTIVE" | "COMPLETED" | "OVERDUE" = "ACTIVE";
@@ -66,6 +72,7 @@ export async function createSlot(formData: FormData) {
     await dbConnect();
     const newSlot = new Slot({
       type,
+      quantity,
       investorName,
       mobileNo,
       investmentDate,
@@ -99,6 +106,7 @@ export async function updateSlot(id: string, formData: FormData) {
   const amountStr = formData.get("amount") as string;
   const returnAmountStr = formData.get("return_amount") as string;
   const statusInput = formData.get("status") as "ACTIVE" | "COMPLETED" | "OVERDUE";
+  const quantityStr = formData.get("quantity") as string;
 
   if (!type || !investorName || !mobileNo || !investmentDateStr || !returnDateStr || !amountStr || !returnAmountStr) {
     return { error: "All fields are required." };
@@ -122,6 +130,7 @@ export async function updateSlot(id: string, formData: FormData) {
 
   const amount = parseFloat(amountStr);
   const returnAmount = parseFloat(returnAmountStr);
+  const quantity = quantityStr ? parseInt(quantityStr, 10) : 1;
 
   if (isNaN(amount) || amount <= 0) {
     return { error: "Investment amount must be greater than 0." };
@@ -129,6 +138,10 @@ export async function updateSlot(id: string, formData: FormData) {
 
   if (isNaN(returnAmount) || returnAmount <= 0) {
     return { error: "Return amount must be greater than 0." };
+  }
+
+  if (isNaN(quantity) || quantity < 1) {
+    return { error: "Quantity must be at least 1." };
   }
 
   let status: "ACTIVE" | "COMPLETED" | "OVERDUE" = statusInput || "ACTIVE";
@@ -148,6 +161,7 @@ export async function updateSlot(id: string, formData: FormData) {
     await dbConnect();
     await Slot.findByIdAndUpdate(id, {
       type,
+      quantity,
       investorName,
       mobileNo,
       investmentDate,

@@ -34,6 +34,7 @@ export default async function Page() {
   const slots = rawSlots.map((s: any) => ({
     id: s._id.toString(),
     type: s.type,
+    quantity: s.quantity ?? 1,
     investorName: s.investorName,
     mobileNo: s.mobileNo,
     investmentDate: s.investmentDate.toISOString(),

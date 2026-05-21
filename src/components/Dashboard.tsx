@@ -10,6 +10,7 @@ import CapitalFlowChart from "./CapitalFlowChart";
 interface SlotData {
   id: string;
   type: "FIX" | "NON_FIX";
+  quantity: number;
   investorName: string;
   mobileNo: string;
   investmentDate: string;
@@ -161,8 +162,11 @@ export default function Dashboard({ slots, payments }: DashboardProps) {
               const isCompleted = slot.status === "COMPLETED";
 
               // Business logic amounts
-              const expectedTds = slot.type === "FIX" ? 170 : 270;
-              const expectedBooking = slot.type === "FIX" ? 370 : 500;
+              const perSlotTds = slot.type === "FIX" ? 170 : 270;
+              const perSlotBooking = slot.type === "FIX" ? 370 : 500;
+              const slotQty = slot.quantity ?? 1;
+              const expectedTds = perSlotTds * slotQty;
+              const expectedBooking = perSlotBooking * slotQty;
 
               const isTdsPaid = tds > 0;
               const isBookingPaid = booking > 0;

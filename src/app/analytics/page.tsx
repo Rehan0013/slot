@@ -6,6 +6,7 @@ import Payment from "@/models/Payment";
 import BottomNav from "@/components/BottomNav";
 import { formatCurrency } from "@/lib/utils";
 import CapitalFlowChart from "@/components/CapitalFlowChart";
+import MonthlyTradeOverview from "@/components/MonthlyTradeOverview";
 
 export const revalidate = 0;
 
@@ -19,12 +20,26 @@ export default async function AnalyticsPage() {
   const slots = await Slot.find().lean();
   const payments = await Payment.find().lean();
 
+  // For capital flow chart
   const serializedSlots = slots.map((s: any) => ({
     id: s._id.toString(),
     investmentDate: s.investmentDate.toISOString(),
     returnDate: s.returnDate.toISOString(),
     amount: s.amount,
     returnAmount: s.returnAmount,
+  }));
+
+  // For monthly overview (full data)
+  const overviewSlots = slots.map((s: any) => ({
+    id: s._id.toString(),
+    type: s.type as "FIX" | "NON_FIX",
+    quantity: s.quantity ?? 1,
+    investorName: s.investorName,
+    investmentDate: s.investmentDate.toISOString(),
+    returnDate: s.returnDate.toISOString(),
+    amount: s.amount,
+    returnAmount: s.returnAmount,
+    status: s.status as "ACTIVE" | "COMPLETED" | "OVERDUE",
   }));
 
   const totalInvested = slots.reduce((sum, s) => sum + s.amount, 0);
@@ -49,12 +64,14 @@ export default async function AnalyticsPage() {
         <div className="flex items-center gap-2">
           <span className="material-symbols-outlined text-primary">monitoring</span>
           <h1 className="font-sora text-base font-extrabold text-primary tracking-tight">
-            ANALYTICS & METRICS
+            ANALYTICS &amp; METRICS
           </h1>
         </div>
       </header>
 
       <main className="px-4 py-6 space-y-6 max-w-md mx-auto">
+
+        {/* Portfolio Performance */}
         <section className="glass-card rounded-2xl p-5 space-y-4">
           <h3 className="font-sora text-sm font-semibold text-on-surface flex items-center gap-2">
             <span className="w-1 h-5 bg-primary rounded-full"></span>
@@ -131,6 +148,16 @@ export default async function AnalyticsPage() {
             </div>
           </div>
         </section>
+
+        {/* ─── Monthly Trade Overview ─── */}
+        <div className="space-y-3">
+          <h2 className="font-sora text-sm font-bold text-on-surface flex items-center gap-2">
+            <span className="w-1 h-5 bg-secondary rounded-full"></span>
+            Monthly Trade Overview
+          </h2>
+          <MonthlyTradeOverview slots={overviewSlots} />
+        </div>
+
       </main>
 
       <BottomNav />

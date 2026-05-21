@@ -8,6 +8,7 @@ import BottomNav from "./BottomNav";
 interface SlotData {
   id: string;
   type: "FIX" | "NON_FIX";
+  quantity: number;
   investorName: string;
   mobileNo: string;
   investmentDate: string;
@@ -144,8 +145,9 @@ export default function ActivityDashboard({ slots, payments }: ActivityDashboard
               const isCompleted = slot.status === "COMPLETED";
 
               // Expected business logic amounts
-              const expectedTds = slot.type === "FIX" ? 170 : 270;
-              const expectedBooking = slot.type === "FIX" ? 370 : 500;
+              const slotQty = (slot as any).quantity ?? 1;
+              const expectedTds = (slot.type === "FIX" ? 170 : 270) * slotQty;
+              const expectedBooking = (slot.type === "FIX" ? 370 : 500) * slotQty;
 
               const isTdsPaid = tds > 0;
               const isBookingPaid = booking > 0;
