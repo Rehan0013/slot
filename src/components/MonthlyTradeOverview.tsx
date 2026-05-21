@@ -2,6 +2,8 @@
 
 import { useState, useMemo } from "react";
 import { formatCurrency } from "@/lib/utils";
+import Link from "next/link";
+import { saveMonthlyConfig } from "@/app/actions/monthlyConfig";
 
 interface SlotData {
   id: string;
@@ -17,6 +19,7 @@ interface SlotData {
 
 interface MonthlyTradeOverviewProps {
   slots: SlotData[];
+  configs?: Record<string, any>;
 }
 
 const MONTH_NAMES = [
@@ -47,7 +50,7 @@ function getMonthLabel(key: string) {
   return { month: MONTH_NAMES[parseInt(month) - 1], year };
 }
 
-export default function MonthlyTradeOverview({ slots }: MonthlyTradeOverviewProps) {
+export default function MonthlyTradeOverview({ slots, configs = {} }: MonthlyTradeOverviewProps) {
   // Group slots by investment month
   const grouped = useMemo(() => {
     const map: Record<string, SlotData[]> = {};
@@ -65,8 +68,12 @@ export default function MonthlyTradeOverview({ slots }: MonthlyTradeOverviewProp
   );
 
   const [selectedMonth, setSelectedMonth] = useState<string>(months[0] || "");
+  const [isEditingConfig, setIsEditingConfig] = useState(false);
+  const [isSavingConfig, setIsSavingConfig] = useState(false);
+  const [configForm, setConfigForm] = useState({ monthLabel: "", yearLabel: "", investmentDate: "", perSlotAmount: 10000 });
 
   const monthSlots = grouped[selectedMonth] || [];
+  const currentConfig = configs[selectedMonth] || {};
 
   // Aggregate per duration bucket
   const durationRows = useMemo(() => {
@@ -101,13 +108,63 @@ export default function MonthlyTradeOverview({ slots }: MonthlyTradeOverviewProp
   const fixSlots = monthSlots.filter((s) => s.type === "FIX");
   const nonFixSlots = monthSlots.filter((s) => s.type === "NON_FIX");
 
-  const earliestDate = monthSlots.length
+  const autoEarliestDate = monthSlots.length
     ? new Date(Math.min(...monthSlots.map((s) => new Date(s.investmentDate).getTime())))
     : null;
 
-  const { month: monthLabel, year: yearLabel } = selectedMonth
+  const { month: autoMonth, year: autoYear } = selectedMonth
     ? getMonthLabel(selectedMonth)
     : { month: "-", year: "-" };
+
+  const monthLabel = currentConfig.monthLabel || autoMonth;
+  const yearLabel = currentConfig.yearLabel || autoYear;
+  const earliestDate = currentConfig.investmentDate ? new Date(currentConfig.investmentDate) : autoEarliestDate;
+  const perSlotAmount = currentConfig.perSlotAmount || 10000;
+
+  const handleEditOverview = () => {
+    setConfigForm({
+      monthLabel: currentConfig.monthLabel || "",
+      yearLabel: currentConfig.yearLabel || "",
+      investmentDate: currentConfig.investmentDate ? currentConfig.investmentDate.split("T")[0] : "",
+      perSlotAmount: currentConfig.perSlotAmount || 10000,
+    });
+    setIsEditingConfig(true);
+  };
+
+  const handleSaveConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingConfig(true);
+    try {
+      await saveMonthlyConfig(selectedMonth, {
+        perSlotAmount: Number(configForm.perSlotAmount),
+        investmentDate: configForm.investmentDate || null,
+        monthLabel: configForm.monthLabel || null,
+        yearLabel: configForm.yearLabel || null,
+      });
+      setIsEditingConfig(false);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to save configuration.");
+    } finally {
+      setIsSavingConfig(false);
+    }
+  };
+
+  // Group current month slots by formatted date
+  const slotsByDate = useMemo(() => {
+    const map: Record<string, SlotData[]> = {};
+    for (const slot of monthSlots) {
+      const dStr = new Date(slot.investmentDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+      if (!map[dStr]) map[dStr] = [];
+      map[dStr].push(slot);
+    }
+    return map;
+  }, [monthSlots]);
+
+  const sortedDates = useMemo(() => {
+    // We can just sort the keys by parsing them back to Date
+    return Object.keys(slotsByDate).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+  }, [slotsByDate]);
 
   if (months.length === 0) {
     return (
@@ -148,9 +205,18 @@ export default function MonthlyTradeOverview({ slots }: MonthlyTradeOverviewProp
         <div className="absolute -right-8 -top-8 w-32 h-32 bg-primary/8 rounded-full blur-3xl" />
         <div className="absolute -left-8 -bottom-8 w-28 h-28 bg-secondary/8 rounded-full blur-3xl" />
         <div className="relative z-10">
-          <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-on-surface-variant mb-3">
-            Fix &amp; Non-Fix Trading · Monthly Report
-          </p>
+          <div className="flex justify-between items-center mb-3">
+            <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">
+              Fix &amp; Non-Fix Trading · Monthly Report
+            </p>
+            <button
+              onClick={handleEditOverview}
+              className="text-[10px] flex items-center gap-1 font-bold text-primary bg-primary/10 px-2 py-1 rounded-md hover:bg-primary/20 transition-colors active:scale-95 border border-primary/20 cursor-pointer shadow-sm"
+            >
+              <span className="material-symbols-outlined text-[14px]">edit</span>
+              Edit
+            </button>
+          </div>
           <div className="grid grid-cols-2 gap-x-6 gap-y-4">
             <div className="space-y-1 border-b border-outline-variant/20 pb-3">
               <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Month</p>
@@ -170,7 +236,7 @@ export default function MonthlyTradeOverview({ slots }: MonthlyTradeOverviewProp
             </div>
             <div className="space-y-1">
               <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Per-Slot Amount</p>
-              <p className="font-sora text-sm font-bold text-secondary">₹10,000 /-</p>
+              <p className="font-sora text-sm font-bold text-secondary">{formatCurrency(perSlotAmount)}</p>
             </div>
           </div>
         </div>
@@ -292,67 +358,84 @@ export default function MonthlyTradeOverview({ slots }: MonthlyTradeOverviewProp
         </div>
       </section>
 
-      {/* Individual Slots in this month */}
+      {/* Individual Slots in this month grouped by date */}
       {monthSlots.length > 0 && (
-        <section className="space-y-3">
+        <section className="space-y-5">
           <h3 className="font-sora text-sm font-bold text-on-surface flex items-center gap-2">
             <span className="w-1 h-5 bg-primary rounded-full" />
-            Slots this month ({monthSlots.length})
+            Investments Timeline ({monthSlots.length})
           </h3>
-          {monthSlots.map((slot) => {
-            const days = getDurationDays(slot.investmentDate, slot.returnDate);
-            const profit = slot.returnAmount - slot.amount;
-            const qty = slot.quantity ?? 1;
-            return (
-              <div
-                key={slot.id}
-                className={`glass-card rounded-xl p-4 border-l-4 ${
-                  slot.type === "FIX" ? "border-l-primary" : "border-l-secondary"
-                }`}
-              >
-                <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <p className="font-sora text-sm font-bold text-on-surface">{slot.investorName}</p>
-                    <p className="text-[10px] text-on-surface-variant mt-0.5">
-                      {new Date(slot.investmentDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
-                      {" → "}
-                      {new Date(slot.returnDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
-                    </p>
-                  </div>
-                  <div className="flex flex-col items-end gap-1">
-                    <span
-                      className={`px-2 py-0.5 text-[9px] font-bold rounded-full uppercase tracking-wider ${
-                        slot.type === "FIX"
-                          ? "bg-primary/15 border border-primary/25 text-primary"
-                          : "bg-secondary/15 border border-secondary/25 text-secondary"
-                      }`}
-                    >
-                      {slot.type === "FIX" ? "Fix" : "Non-Fix"}
-                    </span>
-                    <span className="text-[9px] font-bold text-outline uppercase tracking-wider">
-                      {days} days{qty > 1 ? ` · ×${qty}` : ""}
-                    </span>
-                  </div>
-                </div>
-                <div className="grid grid-cols-3 gap-2 mt-2">
-                  <div className="text-center bg-black/20 rounded-lg p-2">
-                    <p className="text-[9px] text-on-surface-variant uppercase font-bold">Invested</p>
-                    <p className="font-bold text-xs text-on-surface mt-0.5">{formatCurrency(slot.amount)}</p>
-                  </div>
-                  <div className="text-center bg-black/20 rounded-lg p-2">
-                    <p className="text-[9px] text-on-surface-variant uppercase font-bold">Return</p>
-                    <p className={`font-bold text-xs mt-0.5 ${slot.type === "FIX" ? "text-primary" : "text-secondary"}`}>
-                      {formatCurrency(slot.returnAmount)}
-                    </p>
-                  </div>
-                  <div className="text-center bg-black/20 rounded-lg p-2">
-                    <p className="text-[9px] text-on-surface-variant uppercase font-bold">Profit</p>
-                    <p className="font-bold text-xs text-primary mt-0.5">{formatCurrency(profit)}</p>
-                  </div>
-                </div>
+          
+          {sortedDates.map((dateLabel) => (
+            <div key={dateLabel} className="space-y-3">
+              <div className="flex items-center gap-2 text-on-surface-variant font-sora text-[11px] font-bold bg-surface-container-high/60 py-1.5 px-3 rounded-lg w-max border border-outline-variant/10 shadow-sm">
+                <span className="material-symbols-outlined text-[14px] text-primary">calendar_today</span>
+                {dateLabel}
               </div>
-            );
-          })}
+              
+              {slotsByDate[dateLabel].map((slot) => {
+                const days = getDurationDays(slot.investmentDate, slot.returnDate);
+                const profit = slot.returnAmount - slot.amount;
+                const qty = slot.quantity ?? 1;
+                return (
+                  <div
+                    key={slot.id}
+                    className={`glass-card rounded-xl p-4 border-l-4 ${
+                      slot.type === "FIX" ? "border-l-primary" : "border-l-secondary"
+                    }`}
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="font-sora text-sm font-bold text-on-surface">{slot.investorName}</p>
+                          <Link
+                            href={`/slots/${slot.id}/edit`}
+                            className="text-on-surface-variant hover:text-primary transition-colors flex items-center justify-center bg-black/20 p-1 rounded-full active:scale-95 border border-white/5"
+                            title="Edit Slot"
+                          >
+                            <span className="material-symbols-outlined text-[12px]">edit</span>
+                          </Link>
+                        </div>
+                        <p className="text-[10px] text-on-surface-variant mt-0.5">
+                          Return on: {new Date(slot.returnDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                        </p>
+                      </div>
+                      <div className="flex flex-col items-end gap-1">
+                        <span
+                          className={`px-2 py-0.5 text-[9px] font-bold rounded-full uppercase tracking-wider ${
+                            slot.type === "FIX"
+                              ? "bg-primary/15 border border-primary/25 text-primary"
+                              : "bg-secondary/15 border border-secondary/25 text-secondary"
+                          }`}
+                        >
+                          {slot.type === "FIX" ? "Fix" : "Non-Fix"}
+                        </span>
+                        <span className="text-[9px] font-bold text-outline uppercase tracking-wider">
+                          {days} days{qty > 1 ? ` · ×${qty}` : ""}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 mt-2">
+                      <div className="text-center bg-black/20 rounded-lg p-2">
+                        <p className="text-[9px] text-on-surface-variant uppercase font-bold">Invested</p>
+                        <p className="font-bold text-xs text-on-surface mt-0.5">{formatCurrency(slot.amount)}</p>
+                      </div>
+                      <div className="text-center bg-black/20 rounded-lg p-2">
+                        <p className="text-[9px] text-on-surface-variant uppercase font-bold">Return</p>
+                        <p className={`font-bold text-xs mt-0.5 ${slot.type === "FIX" ? "text-primary" : "text-secondary"}`}>
+                          {formatCurrency(slot.returnAmount)}
+                        </p>
+                      </div>
+                      <div className="text-center bg-black/20 rounded-lg p-2">
+                        <p className="text-[9px] text-on-surface-variant uppercase font-bold">Profit</p>
+                        <p className="font-bold text-xs text-primary mt-0.5">{formatCurrency(profit)}</p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ))}
         </section>
       )}
 
@@ -377,6 +460,95 @@ export default function MonthlyTradeOverview({ slots }: MonthlyTradeOverviewProp
           ))}
         </ul>
       </section>
+
+      {/* Edit Overview Modal */}
+      {isEditingConfig && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="glass-card w-full max-w-sm rounded-2xl p-6 relative overflow-hidden animate-in fade-in zoom-in-95 duration-200 border-outline-variant/30">
+            <header className="mb-5 flex justify-between items-center">
+              <h3 className="font-sora text-base font-bold text-on-surface flex items-center gap-2">
+                <span className="material-symbols-outlined text-primary">edit_document</span>
+                Edit Overview
+              </h3>
+              <button
+                onClick={() => setIsEditingConfig(false)}
+                className="text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </header>
+
+            <form onSubmit={handleSaveConfig} className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Per-Slot Amount</label>
+                <input
+                  type="number"
+                  required
+                  min="0"
+                  value={configForm.perSlotAmount}
+                  onChange={(e) => setConfigForm({ ...configForm, perSlotAmount: Number(e.target.value) })}
+                  className="w-full bg-surface-container-high border border-outline-variant/30 rounded-xl px-4 py-2.5 text-sm font-bold text-on-surface focus:outline-none focus:border-primary/50 transition-colors"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Investment Date (Override)</label>
+                <input
+                  type="date"
+                  value={configForm.investmentDate}
+                  onChange={(e) => setConfigForm({ ...configForm, investmentDate: e.target.value })}
+                  className="w-full bg-surface-container-high border border-outline-variant/30 rounded-xl px-4 py-2.5 text-sm font-medium text-on-surface focus:outline-none focus:border-primary/50 transition-colors block"
+                />
+                <p className="text-[9px] text-on-surface-variant mt-1">Leave blank to auto-calculate from slots.</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Month Label</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. May"
+                    value={configForm.monthLabel}
+                    onChange={(e) => setConfigForm({ ...configForm, monthLabel: e.target.value })}
+                    className="w-full bg-surface-container-high border border-outline-variant/30 rounded-xl px-4 py-2.5 text-sm font-medium text-on-surface focus:outline-none focus:border-primary/50 transition-colors"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Year Label</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 2026"
+                    value={configForm.yearLabel}
+                    onChange={(e) => setConfigForm({ ...configForm, yearLabel: e.target.value })}
+                    className="w-full bg-surface-container-high border border-outline-variant/30 rounded-xl px-4 py-2.5 text-sm font-medium text-on-surface focus:outline-none focus:border-primary/50 transition-colors"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-4 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsEditingConfig(false)}
+                  className="flex-1 h-11 rounded-xl border border-outline-variant/30 text-on-surface font-bold text-[11px] uppercase tracking-wider hover:bg-white/5 active:scale-95 transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingConfig}
+                  className="flex-1 h-11 rounded-xl bg-primary-container text-on-primary-container font-bold text-[11px] uppercase tracking-wider hover:scale-[1.01] active:scale-95 transition-all cursor-pointer shadow-md disabled:opacity-75 flex items-center justify-center gap-2"
+                >
+                  {isSavingConfig ? (
+                    <span className="material-symbols-outlined animate-spin text-[16px]">progress_activity</span>
+                  ) : (
+                    "Save Config"
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

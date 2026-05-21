@@ -3,6 +3,7 @@ import { getSession } from "@/lib/session";
 import dbConnect from "@/lib/db";
 import Slot from "@/models/Slot";
 import Payment from "@/models/Payment";
+import MonthlyConfig from "@/models/MonthlyConfig";
 import BottomNav from "@/components/BottomNav";
 import { formatCurrency } from "@/lib/utils";
 import CapitalFlowChart from "@/components/CapitalFlowChart";
@@ -19,6 +20,18 @@ export default async function AnalyticsPage() {
   await dbConnect();
   const slots = await Slot.find().lean();
   const payments = await Payment.find().lean();
+  const rawConfigs = await MonthlyConfig.find().lean();
+
+  const configs = rawConfigs.reduce((acc: any, c: any) => {
+    acc[c.monthKey] = {
+      monthKey: c.monthKey,
+      perSlotAmount: c.perSlotAmount,
+      investmentDate: c.investmentDate ? c.investmentDate.toISOString() : null,
+      monthLabel: c.monthLabel || null,
+      yearLabel: c.yearLabel || null,
+    };
+    return acc;
+  }, {});
 
   // For capital flow chart
   const serializedSlots = slots.map((s: any) => {
@@ -169,7 +182,7 @@ export default async function AnalyticsPage() {
             <span className="w-1 h-5 bg-secondary rounded-full"></span>
             Monthly Trade Overview
           </h2>
-          <MonthlyTradeOverview slots={overviewSlots} />
+          <MonthlyTradeOverview slots={overviewSlots} configs={configs} />
         </div>
 
       </main>
