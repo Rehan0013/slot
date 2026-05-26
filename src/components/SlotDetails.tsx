@@ -2,9 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import { deleteSlot, toggleSlotCompletion } from "@/app/actions/slots";
+import { toggleSlotCompletion } from "@/app/actions/slots";
 import { addPayment, deletePayment } from "@/app/actions/payments";
 import MonthlyReturnsBreakdown from "./MonthlyReturnsBreakdown";
 
@@ -37,7 +36,6 @@ interface SlotDetailsProps {
 
 export default function SlotDetails({ slot, payments }: SlotDetailsProps) {
   const router = useRouter();
-  const [showDeleteSlotModal, setShowDeleteSlotModal] = useState(false);
   const [showTdsPendingModal, setShowTdsPendingModal] = useState(false);
 
   // Pending states for payment transitions
@@ -104,13 +102,6 @@ export default function SlotDetails({ slot, payments }: SlotDetailsProps) {
     }
   };
 
-  const handleDeleteSlot = async () => {
-    try {
-      await deleteSlot(slot.id);
-    } catch (err) {
-      console.error(err);
-    }
-  };
 
   const handleMarkTdsPaid = async () => {
     if (isTdsPending) return;
@@ -167,22 +158,7 @@ export default function SlotDetails({ slot, payments }: SlotDetailsProps) {
           </button>
           <h1 className="font-headline-sm text-base font-bold text-primary">Slot Details</h1>
         </div>
-        <div className="flex items-center gap-1">
-          <Link
-            href={`/slots/${slot.id}/edit`}
-            className="transition-all duration-200 active:scale-95 hover:opacity-80 p-2 text-primary flex items-center"
-            aria-label="Edit slot"
-          >
-            <span className="material-symbols-outlined">edit</span>
-          </Link>
-          <button
-            onClick={() => setShowDeleteSlotModal(true)}
-            className="transition-all duration-200 active:scale-95 hover:opacity-80 p-2 text-error cursor-pointer flex items-center"
-            aria-label="Delete slot"
-          >
-            <span className="material-symbols-outlined">delete</span>
-          </button>
-        </div>
+
       </header>
 
       <main className="mt-20 px-4 space-y-6 max-w-md mx-auto">
@@ -491,40 +467,6 @@ export default function SlotDetails({ slot, payments }: SlotDetailsProps) {
         />
       </main>
 
-      {/* Delete Slot Dialog Modal */}
-      {showDeleteSlotModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="glass-card w-full max-w-sm rounded-2xl p-6 relative overflow-hidden animate-in fade-in zoom-in-95 duration-200 border-error/30">
-            <header className="mb-4">
-              <h3 className="font-sora text-base font-bold text-error flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-error">warning</span>
-                Delete Investment Slot?
-              </h3>
-            </header>
-
-            <div className="space-y-4">
-              <p className="text-xs text-on-surface-variant leading-relaxed">
-                This action is permanent and cannot be undone. All recorded payments (TDS and Booking) associated with this slot will be permanently deleted from the database.
-              </p>
-
-              <div className="flex gap-3 justify-end pt-2">
-                <button
-                  onClick={() => setShowDeleteSlotModal(false)}
-                  className="h-10 px-4 rounded-xl border border-outline-variant/30 text-on-surface-variant font-bold text-xs uppercase tracking-wider hover:bg-white/5 active:scale-95 transition-all cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleDeleteSlot}
-                  className="h-10 px-4 rounded-xl bg-error text-on-error font-bold text-xs uppercase tracking-wider hover:bg-error/95 active:scale-95 shadow-md shadow-error/15 transition-all cursor-pointer"
-                >
-                  Delete Permanently
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* TDS Warning Dialog Modal */}
       {showTdsPendingModal && (
